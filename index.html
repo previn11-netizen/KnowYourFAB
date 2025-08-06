@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ASML Flashcard Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom right, #0033a0, #ffffff);
+            color: #0033a0;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #ffffff;
+            padding: 20px;
+            border-bottom: 4px solid #0033a0;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .instructions {
+            padding: 20px;
+            background-color: #f0f4ff;
+            border-bottom: 2px solid #0033a0;
+        }
+        .game-container {
+            padding: 30px;
+        }
+        .card {
+            font-size: 2em;
+            margin: 20px auto;
+            padding: 30px;
+            border: 2px solid #0033a0;
+            border-radius: 10px;
+            width: 60%;
+            background-color: #ffffff;
+        }
+        .buttons {
+            margin: 20px;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .correct-btn {
+            background-color: #28a745;
+            color: white;
+        }
+        .skip-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+        .scoreboard {
+            font-size: 1.5em;
+            margin-top: 20px;
+        }
+        .timer {
+            font-size: 1.5em;
+            margin-top: 10px;
+        }
+        .team-select {
+            margin: 20px;
+        }
+        .final-score {
+            font-size: 3em;
+            margin-top: 40px;
+            color: #0033a0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ASML Flashcard Game</h1>
+    </header>
+    <div class="instructions">
+        <p>Select your team and click "Start Game". You have 15 minutes to go through all flashcards. Click "CORRECT" if your team gets it right, or "SKIP" to move on. Your score will be shown at the end.</p>
+    </div>
+    <div class="game-container">
+        <div class="team-select" id="teamSelect">
+            <label for="team">Select Team:</label>
+            <select id="team">
+                <option value="">--Choose Team--</option>
+                <option value="Team 1">Team 1</option>
+                <option value="Team 2">Team 2</option>
+                <option value="Team 3">Team 3</option>
+                <option value="Team 4">Team 4</option>
+                <option value="Team 5">Team 5</option>
+                <option value="Team 6">Team 6</option>
+                <option value="Team 7">Team 7</option>
+                <option value="Team 8">Team 8</option>
+                <option value="Team 9">Team 9</option>
+                <option value="Team 10">Team 10</option>
+            </select>
+            <button onclick="startGame()">Start Game</button>
+        </div>
+        <div class="card" id="card" style="display:none;"></div>
+        <div class="buttons" id="buttons" style="display:none;">
+            <button class="correct-btn" onclick="markCorrect()">CORRECT</button>
+            <button class="skip-btn" onclick="nextCard()">SKIP</button>
+        </div>
+        <div class="scoreboard" id="scoreboard" style="display:none;">Score: 0</div>
+        <div class="timer" id="timer" style="display:none;">Time Left: 15:00</div>
+        <div class="final-score" id="finalScore" style="display:none;"></div>
+    </div>
+
+    <script>
+        const words = [
+            "Lithography", "Wafer", "Reticle", "Exposure", "Overlay", "Alignment", "Focus", "Dose", "Scanner", "Stepper",
+            "Optics", "Illumination", "Projection lens", "NA (Numerical Aperture)", "Throughput", "Twinscan XT", "XT 860",
+            "XT 1460", "XT 1900", "Dry lithography", "Immersion lithography", "PAS (Projection Alignment System)",
+            "Wafer stage", "Reticle stage", "Chuck", "Metrology", "Calibration", "Recipe", "Machine uptime", "Tool matching",
+            "Cleanroom", "FAB", "Module build", "Integration", "Qualification", "FAT (Factory Acceptance Test)",
+            "SAT (Site Acceptance Test)", "Assembly", "Logistics", "Manufacturing Execution System (MES)", "Operator",
+            "Technician", "Engineer", "Field Service", "Customer Support", "Manufacturing Engineer", "System Integration",
+            "Quality Assurance", "Project Lead", "Shift Leader", "MTBF (Mean Time Between Failures)",
+            "MTTR (Mean Time To Repair)", "Yield", "Cycle time", "Defect density", "Process window", "Productivity",
+            "Availability", "Utilization", "SPC (Statistical Process Control)", "Safety First", "Risk Assessment", "Hazard",
+            "PPE (Personal Protective Equipment)", "Safety Glasses", "Gloves", "Ear Protection", "Safety Shoes", "Hard Hat",
+            "Emergency Exit", "MSDS (Material Safety Data Sheet)", "Chemical Handling", "Spill Response", "Ventilation",
+            "Fume Hood", "Waste Disposal", "Contamination Control", "Cleanroom Protocol", "Airborne Particles",
+            "ESD (Electrostatic Discharge)", "Lockout/Tagout (LOTO)", "High Voltage", "Grounding", "Interlock System",
+            "Mechanical Hazards", "Pinch Points", "Moving Parts", "Tool Safety", "Machine Guarding", "Isolation Procedures",
+            "Fire Extinguisher", "First Aid", "Evacuation Plan", "Alarm System", "Safety Training", "Incident Reporting",
+            "Safety Audit", "Compliance", "Safety Signage", "Safety Culture"
+        ];
+
+        let shuffledWords = [];
+        let currentIndex = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 15 * 60;
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startGame() {
+            const team = document.getElementById("team").value;
+            if (!team) {
+                alert("Please select a team.");
+                return;
+            }
+            shuffledWords = [...words];
+            shuffle(shuffledWords);
+            currentIndex = 0;
+            score = 0;
+            timeLeft = 15 * 60;
+            document.getElementById("teamSelect").style.display = "none";
+            document.getElementById("card").style.display = "block";
+            document.getElementById("buttons").style.display = "block";
+            document.getElementById("scoreboard").style.display = "block";
+            document.getElementById("timer").style.display = "block";
+            document.getElementById("finalScore").style.display = "none";
+            document.getElementById("scoreboard").innerText = "Score: 0";
+            showCard();
+            startTimer();
+        }
+
+        function showCard() {
+            if (currentIndex >= shuffledWords.length) {
+                endGame();
+                return;
+            }
+            document.getElementById("card").innerText = shuffledWords[currentIndex];
+        }
+
+        function markCorrect() {
+            score++;
+            document.getElementById("scoreboard").innerText = "Score: " + score;
+            nextCard();
+        }
+
+        function nextCard() {
+            currentIndex++;
+            showCard();
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById("timer").innerText = `Time Left: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timer);
+            document.getElementById("card").style.display = "none";
+            document.getElementById("buttons").style.display = "none";
+            document.getElementById("scoreboard").style.display = "none";
+            document.getElementById("timer").style.display = "none";
+            document.getElementById("finalScore").style.display = "block";
+            document.getElementById("finalScore").innerText = "Final Score: " + score;
+        }
+    </script>
+</body>
+</html>
